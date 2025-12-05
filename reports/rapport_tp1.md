@@ -96,6 +96,8 @@ CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
 > *docker run -p 8000:8000 simple-api*
 ![Screenshot](/screenshots/Q3cbis.jpg)
 
+→ L’option *-p 8000:8000* permet de mapper le port 8000 de mon ordinateur vers le port 8000 du conteneur. Cela rend l’API accessible depuis http://localhost:8000.
+
 > *http://localhost:8000/health*
 ![Screenshot](/screenshots/Q3cbisbis.jpg)
 
