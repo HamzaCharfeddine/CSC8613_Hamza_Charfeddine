@@ -120,3 +120,35 @@ Ces validations empêchent d’ingérer des données corrompues, ce qui protège
 
 ![Screenshot](/screenshots/TP2Q5a.jpg)
 
+> *docker compose exec postgres psql -U streamflow -d streamflow*
+
+![Screenshot](/screenshots/TP2Q5b.jpg)
+
+- Pour 2024-01-31, il n’y a aucune ligne.
+
+- Pour 2024-02-29, il y a 7043 lignes.
+
+Conclusion: Les snapshots existent uniquement pour les mois où le flow a été exécuté avec snapshot_month. Pour 2024-02-29, toutes les lignes sont copiées, tandis que 2024-01-31 reste vide car aucune ingestion snapshot n’a été faite pour ce mois.
+
+### Synthèse
+
+![Screenshot](/screenshots/TP2Q5d.jpg)
+
+Les tables live se mettent à jour en continu, ce qui pose 2 problèmes:
+
+- Data leakage : Les tables live contiennent des corrections/mises à jour faites après la période d'étude. Un modèle entraîné dessus utilise des infos qui n'existaient pas au moment de la prédiction réelle.
+- Non-reproductibilité : Si on ré-entraîne par exemple 6 mois plus tard, les tables ont changé, donc impossible de reconstruire le même modèle.
+
+*Prévention du data leakage*
+
+Le snapshot du 31/01 contient uniquement ce qui était disponible ce jour-là. Aucune correction ultérieure ne peut "polluer" l'historique.
+
+*Reproductibilité temporelle*
+
+On peut reconstruire l'état exact des données à n'importe quel mois historique. Un modèle entraîné sur un snapshot produit tuojours le même résultat
+
+### Réflexion personnelle 
+
+Le serveur Prefect ne démarrait pas (erreur *Connection refused*).
+
+Ce problème a été résolu avec l'ajout de la ligne: *prefect server start --host 0.0.0.0*
