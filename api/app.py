@@ -1,3 +1,6 @@
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from fastapi.responses import Response
+import time
 from fastapi import FastAPI
 from pydantic import BaseModel
 from feast import FeatureStore
@@ -6,6 +9,16 @@ import pandas as pd
 import os
 
 app = FastAPI(title="StreamFlow Churn Prediction API")
+
+REQUEST_COUNT = Counter(
+    "api_requests_total",
+    "Total number of API requests",
+)
+
+REQUEST_LATENCY = Histogram(
+    "api_request_latency_seconds",
+    "Latency of API requests in seconds",
+)
 
 # --- Config ---
 REPO_PATH = "/repo"
@@ -33,6 +46,11 @@ def health():
 # TODO 2: Mettre une requête POST
 @app.post("/predict")
 def predict(payload: UserPayload):
+    
+    start_time = time.time()
+
+    REQUEST_COUNT.inc()
+
     if store is None or model is None:
         return {"error": "Model or feature store not initialized"}
 
@@ -53,7 +71,7 @@ def predict(payload: UserPayload):
         "support_agg_90d_fv:ticket_avg_resolution_hrs_90d",
     ]
 
-    # TODO 3 : Récupérer les features online
+    # Récupération des features online
     feature_dict = store.get_online_features(
         features=features_request,
         entity_rows=[{"user_id": payload.user_id}],
@@ -69,15 +87,24 @@ def predict(payload: UserPayload):
             "missing_features": missing,
         }
 
-    # Nettoyage minimal (évite bugs de types)
+    # Nettoyage minimal
     X = X.drop(columns=["user_id"], errors="ignore")
 
-    # TODO 4: appeler le modèle et produire la réponse JSON
+    # Prédiction
     y_pred = model.predict(X)
 
-    # TODO 5 : Retourner la prédiction
+    REQUEST_LATENCY.observe(time.time() - start_time)
+
     return {
         "user_id": payload.user_id,
         "prediction": int(y_pred[0]),
         "features_used": X.to_dict(orient="records")[0],
     }
+
+
+@app.get("/metrics")
+def metrics():
+    return Response(
+        generate_latest(),
+        media_type=CONTENT_TYPE_LATEST,
+    )
